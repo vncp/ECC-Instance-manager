@@ -9,7 +9,7 @@ import Spinner from "react-bootstrap/Spinner";
 
 const BACKEND_URL = "http://localhost:3001/api/";
 const TEST_URL = BACKEND_URL + "test";
-const ACTION_URL = BACKEND_URL + "action/";
+const ACTION_URL = BACKEND_URL + "action"
 
 export default function Home() {
   const [error, setError] = useState(null);
@@ -18,16 +18,28 @@ export default function Home() {
   const [requestState, setRequestState] = useState("Idle");
 
   const actionHandler = async (e: any) => {
-    let data = JSON.stringify({
+    const data = JSON.stringify({
       netid: e.target.dataset.name,
       task: e.target.dataset.task,
     });
+    const params = {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: data
+    };
     setRequestState("Waiting on response from server..");
-    const query_params = "?netid=" + e.target.dataset.name;
     const response = await fetch(
-      ACTION_URL + e.target.dataset.task + query_params
+      ACTION_URL,
+      params
     );
-    console.log(response);
+    if(response.ok){
+      return response;
+    } else {
+      setError(true);
+    }
   };
 
   useEffect(() => {
