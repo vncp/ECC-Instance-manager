@@ -10,15 +10,15 @@ export type Request = {
   status: string;
 };
 
-const DataRow = ({ request }) => {
+const DataRow = ({ request, clickHandler }) => {
   return (
     <tr>
-      <td>{request.name}</td>
-      <td>{request.netid}</td>
-      <td>{request.email}</td>
-      <td>{request.course}</td>
-      <td>{request.status}</td>
-      <td>{request.date}</td>
+      <td>{request.name || "N/A"}</td>
+      <td>{request.netid || "N/A"}</td>
+      <td>{request.email || "N/A"}</td>
+      <td>{request.course || "N/A"}</td>
+      <td>{request.status || "N/A"}</td>
+      <td>{request.date || "N/A"}</td>
       <td>
         <Dropdown>
           <Dropdown.Toggle id="dropdown-basic-button">Actions</Dropdown.Toggle>
@@ -26,13 +26,25 @@ const DataRow = ({ request }) => {
             <Dropdown.ItemText>
               <b>{request.netid}</b>
             </Dropdown.ItemText>
-            <Dropdown.Item data-name={request.netid} data-task="createInstance">
+            <Dropdown.Item
+              onClick={clickHandler}
+              data-name={request.netid}
+              data-task="createInstance"
+            >
               Create Instance
             </Dropdown.Item>
-            <Dropdown.Item data-name={request.netid} data-task="reloadInstance">
+            <Dropdown.Item
+              onClick={clickHandler}
+              data-name={request.netid}
+              data-task="reloadInstance"
+            >
               Restart Instance
             </Dropdown.Item>
-            <Dropdown.Item data-name={request.netid} data-task="denyRequest">
+            <Dropdown.Item
+              onClick={clickHandler}
+              data-name={request.netid}
+              data-task="denyRequest"
+            >
               Deny Request
             </Dropdown.Item>
           </Dropdown.Menu>
@@ -42,10 +54,12 @@ const DataRow = ({ request }) => {
   );
 };
 
-const RequestTable = ({ requests }) => {
+const RequestTable = ({ requests, clickHandler }) => {
   let rows: JSX.Element[] = [];
   requests.forEach((r) => {
-    rows.push(<DataRow request={r} key={r.netid} />);
+    rows.push(
+      <DataRow request={r} key={r.netid} clickHandler={clickHandler} />
+    );
   });
   return (
     <div>

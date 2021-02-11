@@ -7,6 +7,12 @@
   align-items: center;
 }
 
+.status {
+  font-weight: 700;
+  font-size: 20pt;
+  margin-bottom: 30px;
+}
+
 .main {
   padding: 5rem 0;
   flex: 1;

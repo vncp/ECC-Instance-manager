@@ -7,48 +7,49 @@ import Container from "react-bootstrap/Container";
 import RequestTable from "../components/Table";
 import Spinner from "react-bootstrap/Spinner";
 
-const BACKEND_URL = "127.0.0.1:3001";
-
-const requestsTest = [
-  {
-    name: "Vincent Pham",
-    netid: "vpham",
-    email: "vpham@nevada.unr.edu",
-    course: "CS999",
-    status: "Unresolved",
-    date: "2/10/21",
-  },
-  {
-    name: "Andrew McIntyre",
-    netid: "amcintyre",
-    email: "amcintyre@nevada.unr.edu",
-    course: "CS999",
-    status: "Resolved",
-    date: "8/15/20",
-  },
-];
+const BACKEND_URL = "http://localhost:3001/api/";
+const TEST_URL = BACKEND_URL + "test";
+const ACTION_URL = BACKEND_URL + "action/";
 
 export default function Home() {
   const [error, setError] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [requests, setRequests] = useState([]);
+  const [requestState, setRequestState] = useState("Idle");
+
+  const actionHandler = async (e: any) => {
+    let data = JSON.stringify({
+      netid: e.target.dataset.name,
+      task: e.target.dataset.task,
+    });
+    setRequestState("Waiting on response from server..");
+    const query_params = "?netid=" + e.target.dataset.name;
+    const response = await fetch(
+      ACTION_URL + e.target.dataset.task + query_params
+    );
+    console.log(response);
+  };
 
   useEffect(() => {
-    fetch(BACKEND_URL)
+    fetch(TEST_URL)
       .then((res: Response) => res.json())
       .then((result) => {
         setIsLoaded(true);
         setRequests(result);
-      }),
-      (error) => {
+      })
+      .catch((error) => {
         setIsLoaded(true);
         setError(error);
         console.error(error);
-      };
-  });
+      });
+  }, []);
 
   if (error) {
-    return <div className={styles.container}>Error: {error.message}</div>;
+    return (
+      <div className={styles.container}>
+        <b>Error:</b>Failed to retrieve data
+      </div>
+    );
   } else if (!isLoaded) {
     return (
       <div className={styles.container}>
@@ -56,7 +57,7 @@ export default function Home() {
           <title>Loading...</title>
         </Head>
         <Spinner animation="border"></Spinner>
-        <div>Loading...</div>
+        <b>Loading...</b>
       </div>
     );
   } else {
@@ -90,8 +91,13 @@ export default function Home() {
             </Nav>
           </Navbar.Collapse>
         </Navbar>
+        <div style={{ height: "100px" }}></div>
+        <div className={styles.status}>{requestState}</div>
         <Container fluid>
-          <RequestTable requests={requests}></RequestTable>
+          <RequestTable
+            requests={requests}
+            clickHandler={actionHandler}
+          ></RequestTable>
         </Container>
       </div>
     );
