@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/gorilla/securecookie"
+	"github.com/dgrijalva/jwt-go"
 )
 
 
@@ -58,6 +59,10 @@ type Task struct {
 	NetID string `json:"netid"`
 	Task  string `json:"task"`
 }
+
+type TokenResponse struct {
+	Token	string `json:"token"`
+}
 //CORS for fetch across different ports
 func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
@@ -88,41 +93,39 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	tpl.ExecuteTemplate(w, "index.gohtml", user)
 }
 
+func checkAuthLevel(netid string) int{
+	if netid == "vpham" {
+		return 3;
+	} else if netid == "prim" {
+		return 2;
+	} else {
+		return 0;
+	}
+}
+
 //Login Handler
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := store.Get(r, "cookie-name")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-        // Where authentication could be done
-	if r.FormValue("code") != "code" {
-		if r.FormValue("code") == "" {
-			session.AddFlash("Must enter a code")
-		}
-		session.AddFlash("The code was incorrect")
-		err = session.Save(r, w)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 
-		http.Redirect(w, r, "/forbidden", http.StatusFound)
-		return
-	}
-	username := r.FormValue("username")
+	fmt.Println("Endpoint: LoginHandler")
+	r.ParseForm()
+	fmt.Printf("Test: %s\n", r.FormValue("netid"))
+	fmt.Printf("Test: %s\n", r.FormValue("password"))
+	authLevel := checkAuthLevel(r.FormValue("netid"))
+	fmt.Printf("authLevel: %d\n", authLevel)
 
-	user := &UserSession{
-		Username:      username,
-		Authenticated: true,
-	}
-	session.Values["user"] = user
-	err = session.Save(r, w)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	http.Redirect(w, r, "/secret", http.StatusFound)
+	w.Header().Set("Content-Type", "application/json")
+	enableCors(&w)
+
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+	claims["netid"] = r.FormValue("netid")
+	claims["expiry"] = time.Now().Add(time.Minute * 2).Unix()
+	claims["level"] = authLevel
+	t, _ := token.SignedString([]byte("secret"))
+	tObj := TokenResponse{Token: t}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(tObj)
 }
 
 func apiMain(w http.ResponseWriter, r *http.Request) {
@@ -188,12 +191,13 @@ func main() {
 	//Backend Paths
 	api := router.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/", apiMain)
+	api.HandleFunc("/login", loginHandler)
 	api.HandleFunc("/test", testResponse)
-	api.HandleFunc("/action", actionH														andler)
+	api.HandleFunc("/action", actionHandler)
 
 	//Frontend Paths
 	//buildHandler := http.FileServer(http.Dir("frontend/out"))
-	//router.PathPrefix("/build").Handler(buildHandler)
+	//router.PathPrefix("/").Handler(buildHandler)
 	//staticHandler := http.StripPrefix("/static/", http.FileServer(http.Dir("frontend/out/_next/static")))
 	//router.PathPrefix("/static/").Handler(staticHandler)
 

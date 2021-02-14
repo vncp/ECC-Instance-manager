@@ -4,7 +4,7 @@ import Nav from "react-bootstrap/Nav";
 const MainNavbar = () => {
   return (
     <Navbar collapseOnSelect expand="xl" bg="dark" variant="dark" fixed="top">
-      <Navbar.Brand href="#home">Remote Linux Instance Management</Navbar.Brand>
+      <Navbar.Brand href="/">Remote Linux Instance Management</Navbar.Brand>
       <Navbar.Toggle aria-controls="responsive-navbar-nav" />
       <Navbar.Collapse id="Responsive-navbar-nav">
         <Nav className="ml-auto" fill>

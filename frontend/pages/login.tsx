@@ -1,5 +1,6 @@
 import MainNavbar from "../components/MainNavbar";
 import React, { useState } from "react";
+import { postLogin } from "../services/login_api";
 
 export type LoginInput = {
   netid: string;
@@ -16,7 +17,7 @@ const Login = () => {
 
   const handleSubmit = async (e: React.ChangeEvent<any>) => {
     e.preventDefault();
-    alert(`TODO add login endpoint! ${JSON.stringify(inputs)}`);
+    postLogin(inputs);
   };
 
   const handleInputChange = (e: React.ChangeEvent<any>) => {
