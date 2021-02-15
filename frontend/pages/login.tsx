@@ -1,6 +1,6 @@
 import MainNavbar from "../components/MainNavbar";
 import React, { useState } from "react";
-import { postLogin } from "../services/login_api";
+import { postLogin } from "../services/login_service";
 
 export type LoginInput = {
   netid: string;
@@ -8,12 +8,12 @@ export type LoginInput = {
 };
 
 const Login = () => {
-  const testValues: LoginInput = {
+  const defaultValues: LoginInput = {
     netid: "",
     password: "",
   };
 
-  const [inputs, setInputs] = useState(testValues);
+  const [inputs, setInputs] = useState(defaultValues);
 
   const handleSubmit = async (e: React.ChangeEvent<any>) => {
     e.preventDefault();

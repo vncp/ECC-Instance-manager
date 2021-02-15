@@ -5,12 +5,13 @@ import Container from "react-bootstrap/Container";
 import RequestTable from "../components/Table";
 import Spinner from "react-bootstrap/Spinner";
 import MainNavbar from "../components/MainNavbar";
+import { privateRoute } from "../components/privateRoute";
 
 const BACKEND_URL = "http://localhost:3001/api/";
-const TEST_URL = BACKEND_URL + "test";
+const TEST_URL = BACKEND_URL + "instances";
 const ACTION_URL = BACKEND_URL + "action";
 
-export default function Home() {
+function Home() {
   const [error, setError] = useState(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [requests, setRequests] = useState([]);
@@ -88,3 +89,5 @@ export default function Home() {
     );
   }
 }
+
+export default privateRoute(Home);

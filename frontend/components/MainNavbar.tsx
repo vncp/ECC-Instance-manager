@@ -18,7 +18,7 @@ const MainNavbar = () => {
             <Nav.Link href="#Help">Documentation</Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link href="/management">Management</Nav.Link>
+            <Nav.Link href="/dashboard">Management</Nav.Link>
           </Nav.Item>
         </Nav>
       </Navbar.Collapse>

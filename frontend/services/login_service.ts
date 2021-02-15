@@ -21,7 +21,7 @@ export const postLogin = async (
     return res.error;
   }
   if (res.data && res.data.token) {
-    alert(`Token: (${res.data.token})`);
+    await AuthToken.storeToken(res.data.token);
     return;
   }
   return "Something unexected happened";

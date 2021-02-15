@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 	"html/template"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -103,6 +104,60 @@ func checkAuthLevel(netid string) int{
 	}
 }
 
+func verifyToken(tokenString string) (jwt.Claims, error) {
+	signingKey := []byte("ecc-secret")
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error){
+		return signingKey, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return token.Claims, err
+}
+
+func authMiddleware(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	tokenString := r.Header.Get("Authorization")
+	if len(tokenString) == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Missing Authorization Header"))
+		return
+	}
+	tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
+	claims, err := verifyToken(tokenString)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Error verifying JWT token: " + err.Error()))
+		return
+	}
+	netid := claims.(jwt.MapClaims)["netid"].(string)
+	r.Header.Set("netid", netid)
+
+	//Grab Real Instances Here
+	requests := []Request{
+		Request{Name: "Zachary Newell",
+			NetID:  "newellz2",
+			Email:  "newellz2@nevada.unr.edu",
+			Course: "",
+			Status: "Archived",
+			Date:   "2/20/19"},
+		Request{Name: "Andrew Mcintyre",
+			NetID:  "amcintyre",
+			Email:  "amcintyre@nevada.unr.edu",
+			Course: "CS 202",
+			Status: "Unresolved",
+			Date:   "9/20/20"},
+		Request{Name: "Vincent Pham",
+			NetID:  "vpham",
+			Email:  "vpham@nevada.unr.edu",
+			Course: "CS 202",
+			Status: "Resolved",
+			Date:   "8/15/19"},
+	}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(requests)
+}
+
 //Login Handler
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -119,9 +174,9 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["netid"] = r.FormValue("netid")
-	claims["expiry"] = time.Now().Add(time.Minute * 2).Unix()
+	claims["expiry"] = time.Now().Add(time.Minute * 30).Unix()
 	claims["level"] = authLevel
-	t, _ := token.SignedString([]byte("secret"))
+	t, _ := token.SignedString([]byte("ecc-secret"))
 	tObj := TokenResponse{Token: t}
 
 	w.WriteHeader(http.StatusCreated)
@@ -149,7 +204,6 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("POST NETID: " + netid)
 	fmt.Println("POST TASK: " + task)
 	enableCors(&w)
-
 }
 
 func testResponse(w http.ResponseWriter, r *http.Request) {
@@ -192,7 +246,7 @@ func main() {
 	api := router.PathPrefix("/api").Subrouter()
 	api.HandleFunc("/", apiMain)
 	api.HandleFunc("/login", loginHandler)
-	api.HandleFunc("/test", testResponse)
+	api.HandleFunc("/instances", authMiddleware)
 	api.HandleFunc("/action", actionHandler)
 
 	//Frontend Paths
