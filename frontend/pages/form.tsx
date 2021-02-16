@@ -1,7 +1,7 @@
 import Head from "next/head";
 import Form from "react-bootstrap/Form";
 import MainNavbar from "../components/MainNavbar";
-import styles from "../styles/RequestForm.module.css";
+import Button from "react-bootstrap/Button";
 
 const RequestForm = () => {
   return (
@@ -11,16 +11,29 @@ const RequestForm = () => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <MainNavbar />
-      <div className={styles.container}>
-        <h1>Remote Linux Instance Request Form</h1>
+      <div
+        style={{
+          boxShadow: "2px 2px 5px 4px rgba(0, 0, 0, 0.07)",
+          marginLeft: "30vw",
+          marginRight: "30vw",
+          paddingTop: "2vh",
+          paddingBottom: "3vh",
+          display: "flex",
+          marginTop: "15vh",
+          flexDirection: "column",
+          alignItems: "center",
+          backgroundColor: "#FFFFFF",
+        }}
+      >
+        <h1>Linux Instance Request Form</h1>
         <h1 />
-        <Form>
+        <Form style={{ display: "flex", flexDirection: "column" }}>
           <Form.Group controlId="requestFormName">
             <Form.Label>Name</Form.Label>
             <Form.Control type="name" placeholder="Name" />
           </Form.Group>
           <Form.Group controlId="requestFormNetid">
-            <Form.Label>Netid</Form.Label>
+            <Form.Label>NetID</Form.Label>
             <Form.Control type="netid" placeholder="Netid" />
           </Form.Group>
           <Form.Group controlId="requestFormEmail">
@@ -32,12 +45,15 @@ const RequestForm = () => {
           </Form.Group>
           <Form.Group controlId="requestFormReason">
             <Form.Label>Course</Form.Label>
-            <Form.Control
-              type="reason"
-              placeholder="Course or reason for request"
-            />
+            <Form.Control type="reason" />
             <Form.Text className="text-muted"></Form.Text>
+            <Form.Text className="text-muted">
+              Enter your course or reason for request.
+            </Form.Text>
           </Form.Group>
+          <Button style={{ marginTop: "1vh" }} type="submit">
+            Submit
+          </Button>{" "}
         </Form>
       </div>
     </>

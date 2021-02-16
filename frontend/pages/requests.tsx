@@ -6,7 +6,6 @@ import Head from "next/head";
 import styles from "../styles/Dashboard.module.css";
 import Container from "react-bootstrap/Container";
 import RequestTable from "../components/RequestTable";
-import ManagementTable from "../components/ManagementTable";
 import Spinner from "react-bootstrap/Spinner";
 
 type Props = AuthProps;
@@ -21,6 +20,7 @@ const Requests = ({ auth }: Props) => {
 
   const actionHandler = async (e: any) => {
     const data = JSON.stringify({
+      requestor: auth.decodedToken.netid,
       netid: e.target.dataset.name,
       task: e.target.dataset.task,
     });
@@ -36,6 +36,8 @@ const Requests = ({ auth }: Props) => {
     setRequestState("Waiting on response from server..");
     const response = await fetch(ACTION_URL, params);
     if (response.ok) {
+      const json = await response.json();
+      setRequestState(json.status);
       return response;
     } else {
       setError(true);

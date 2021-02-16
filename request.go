@@ -40,8 +40,9 @@ type Instance struct {
 
 //Task struct for task requests sent by the frontend
 type Task struct {
-	NetID string `json:"netid"`
-	Task  string `json:"task"`
+	Requestor	string	`json:"requestor"`
+	NetID 		string	`json:"netid"`
+	Task  		string 	`json:"task"`
 }
 
 type TokenResponse struct {
@@ -249,9 +250,14 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 	var instanceData Task
 	decoder := json.NewDecoder(r.Body)
 	decoder.Decode(&instanceData)
+	requestor := instanceData.Requestor
 	netid := instanceData.NetID
 	task := instanceData.Task
+	if requestor=="" || netid=="" || task=="" {
+		return
+	}
 	//TODO: Server Side Tasks
+	fmt.Println("POST REQUESTOR: " + requestor)
 	fmt.Println("POST NETID: " + netid)
 	fmt.Println("POST TASK: " + task)
 	type Response struct {

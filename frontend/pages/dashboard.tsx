@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import MainNavbar from "../components/MainNavbar";
 import { AuthProps, privateRoute } from "../components/privateRoute";
-import { getRequests, getInstances } from "../services/instances_service";
+import { getInstances } from "../services/instances_service";
 import Head from "next/head";
 import styles from "../styles/Dashboard.module.css";
 import Container from "react-bootstrap/Container";
-import Link from "next/link";
 import ManagementTable from "../components/ManagementTable";
 import Spinner from "react-bootstrap/Spinner";
 
@@ -21,6 +20,7 @@ const Dashboard = ({ auth }: Props) => {
 
   const actionHandler = async (e: any) => {
     const data = JSON.stringify({
+      requestor: auth.decodedToken.netid,
       netid: e.target.dataset.name,
       task: e.target.dataset.task,
     });
@@ -88,7 +88,7 @@ const Dashboard = ({ auth }: Props) => {
         </Head>
         <MainNavbar loggedIn staff={auth.decodedToken.level > 2} />
         <div className={styles.status}>{requestState}</div>
-        <Container fluid>
+        <Container>
           <ManagementTable
             instances={instances}
             clickHandler={actionHandler}
