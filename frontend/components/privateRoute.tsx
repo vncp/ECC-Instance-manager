@@ -30,6 +30,9 @@ export function privateRoute(WrappedComponent: any) {
     }
 
     componentDidMount(): void {
+      if (!this.props.auth.authorizationString) {
+        redirectToLogin();
+      }
       this.setState({ auth: new AuthToken(this.props.token) });
     }
 

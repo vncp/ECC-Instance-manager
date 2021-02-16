@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import MainNavbar from "../components/MainNavbar";
 import { AuthProps, privateRoute } from "../components/privateRoute";
+import { redirectToLogin } from "../services/redirect_service";
 import { getInstances } from "../services/instances_service";
 import Head from "next/head";
 import styles from "../styles/Dashboard.module.css";
