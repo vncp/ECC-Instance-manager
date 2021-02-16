@@ -135,10 +135,8 @@ func authMiddlewareRequests(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	//Check Authentication of User
 	tokenString := r.Header.Get("Authorization")
-	fmt.Println("TokenString: ", tokenString)
 	if len(tokenString) == 0 {
 		w.Write([]byte("Missing Authorization Header"))
-		fmt.Println("Missing Authorization Header")
 		return
 	}
 	tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
@@ -196,7 +194,6 @@ func authMiddlewareInstances(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("TokenString: ", tokenString)
 	if len(tokenString) == 0 {
 		w.Write([]byte("Missing Authorization Header"))
-		fmt.Println("Missing Authorization Header")
 		return
 	}
 	tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
