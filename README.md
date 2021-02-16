@@ -29,16 +29,16 @@ Back-end made with Go "gorilla/mux".
 
 # Sample
 ### Login Page
-![Login Page](sample/login.png)
+![Login Page](sample/login.PNG)
 ### Request Form
 Allows users to submit a request which can be approved by staff  
-![Request Form Page](sample/requestform.png)
+![Request Form Page](sample/requestform.PNG)
 ### User Management
 Allows users to independently restart their instances through server it's not responding.  
-![User Management](sample/usermanagement.png)
+![User Management](sample/usermanagement.PNG)
 ### Request Management
 Allows staff to respond to requests.  
-![Request Management](sample/requestmanagement.png)
+![Request Management](sample/requestmanagement.PNG)
 ### Instance Management
 Allows for management and info on instances.  
-![Instance Management](sample/instancemanagement.png)
+![Instance Management](sample/instancemanagement.PNG)
