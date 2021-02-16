@@ -25,20 +25,19 @@ const RequestForm = () => {
           backgroundColor: "#FFFFFF",
         }}
       >
-        <h1>Linux Instance Request Form</h1>
-        <h1 />
+        <h2>Linux Instance Request Form</h2>
         <Form style={{ display: "flex", flexDirection: "column" }}>
           <Form.Group controlId="requestFormName">
             <Form.Label>Name</Form.Label>
-            <Form.Control type="name" placeholder="Name" />
+            <Form.Control type="name" />
           </Form.Group>
           <Form.Group controlId="requestFormNetid">
             <Form.Label>NetID</Form.Label>
-            <Form.Control type="netid" placeholder="Netid" />
+            <Form.Control type="netid" />
           </Form.Group>
           <Form.Group controlId="requestFormEmail">
             <Form.Label>Email</Form.Label>
-            <Form.Control type="email" placeholder="example@nevada.unr.edu" />
+            <Form.Control type="email" />
             <Form.Text className="text-muted">
               We'll use this to notify you that your request has been processed.
             </Form.Text>

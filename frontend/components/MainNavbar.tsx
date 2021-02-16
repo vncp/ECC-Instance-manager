@@ -10,7 +10,15 @@ import {
 const MainNavbar = (props) => {
   return (
     <Navbar collapseOnSelect expand="xl" bg="dark" variant="dark" fixed="top">
-      <Navbar.Brand href="/">Remote Linux Instance Management</Navbar.Brand>
+      <Navbar.Brand href="/">
+        <img
+          src="UNRlogo.gif"
+          width="40px"
+          height="40px"
+          style={{ marginRight: "20px" }}
+        />
+        Remote Linux Instance Management
+      </Navbar.Brand>
       <Navbar.Toggle aria-controls="responsive-navbar-nav" />
       <Navbar.Collapse id="Responsive-navbar-nav">
         <Nav className="ml-auto" fill>

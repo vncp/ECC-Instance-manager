@@ -181,7 +181,7 @@ func getInstances(authLevel int, requestor string) []Instance {
 		instances := []Instance{
 			Instance{Name: requestor,
 			NetID: requestor,
-			Status: "Resolved",
+			Status: "Online",
 			},
 		}
 		return instances
