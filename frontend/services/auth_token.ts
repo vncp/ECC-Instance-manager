@@ -5,6 +5,7 @@ import { redirectToLogin } from "../services/redirect_service";
 
 export type DecodedToken = {
   readonly netid: string;
+  readonly level: number;
   readonly expiry: number;
 };
 
@@ -15,9 +16,8 @@ export class AuthToken {
 
   constructor(readonly token?: string) {
     //Default expired token
-    this.decodedToken = { netid: "", expiry: 0 };
+    this.decodedToken = { netid: "", expiry: 0, level: 0 };
     //Then decode using jwt-decode
-    console.log(token);
     try {
       if (token) {
         this.decodedToken = jwtDecode(token);

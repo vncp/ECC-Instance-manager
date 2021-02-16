@@ -56,11 +56,13 @@ const DataRow = ({ request, clickHandler }) => {
 
 const RequestTable = ({ requests, clickHandler }) => {
   let rows: JSX.Element[] = [];
-  requests.forEach((r) => {
-    rows.push(
-      <DataRow request={r} key={r.netid} clickHandler={clickHandler} />
-    );
-  });
+  if (typeof requests == "object") {
+    requests.forEach((r) => {
+      rows.push(
+        <DataRow request={r} key={r.netid} clickHandler={clickHandler} />
+      );
+    });
+  }
   return (
     <div>
       <Table bordered striped>

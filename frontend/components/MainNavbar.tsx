@@ -1,5 +1,6 @@
 import Navbar from "react-bootstrap/Navbar";
 import Nav from "react-bootstrap/Nav";
+import Router from "next/router";
 
 const MainNavbar = () => {
   return (
@@ -9,7 +10,7 @@ const MainNavbar = () => {
       <Navbar.Collapse id="Responsive-navbar-nav">
         <Nav className="ml-auto" fill>
           <Nav.Item>
-            <Nav.Link href="/login">Login</Nav.Link>
+            <Nav.Link onClick={() => Router.push("/login")}>Login</Nav.Link>
           </Nav.Item>
           <Nav.Item>
             <Nav.Link href="https:/remote.engr.unr.edu/">Remote Home</Nav.Link>
@@ -18,7 +19,9 @@ const MainNavbar = () => {
             <Nav.Link href="#Help">Documentation</Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link href="/dashboard">Management</Nav.Link>
+            <Nav.Link onClick={() => Router.push("/dashboard")}>
+              Management
+            </Nav.Link>
           </Nav.Item>
         </Nav>
       </Navbar.Collapse>

@@ -95,10 +95,12 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func checkAuthLevel(netid string) int{
-	if netid == "vpham" {
+	if netid == "vpham" || netid == "newellz2" {
 		return 3;
-	} else if netid == "prim" {
+	} else if netid == "sskidmore" {
 		return 2;
+	} else if netid == "jakobdellosantos" || netid == "prim" {
+		return 1;
 	} else {
 		return 0;
 	}
@@ -115,12 +117,58 @@ func verifyToken(tokenString string) (jwt.Claims, error) {
 	return token.Claims, err
 }
 
+func getInstances(authLevel int, requestor string) []Request {		
+	if authLevel > 1 {
+		requests := []Request{
+			Request{Name: "Zachary Newell",
+				NetID:  "newellz2",
+				Email:  "newellz2@nevada.unr.edu",
+				Course: "",
+				Status: "Archived",
+				Date:   "2/20/19"},
+			Request{Name: "Andrew Mcintyre",
+				NetID:  "amcintyre",
+				Email:  "amcintyre@nevada.unr.edu",
+				Course: "CS 202",
+				Status: "Unresolved",
+				Date:   "9/20/20"},
+			Request{Name: "Vincent Pham",
+				NetID:  "vpham",
+				Email:  "vpham@nevada.unr.edu",
+				Course: "CS 202",
+				Status: "Resolved",
+				Date:   "8/15/19"},
+		}
+		return requests
+	} else {
+		requests := []Request{
+			Request{Name: requestor,
+			Email: "variable@email.com",
+			Course: "TEST 101",
+			Status: "Resolved",
+			Date: "Apple",
+			},
+		}
+		return requests
+	}
+}
+
 func authMiddleware(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
+	fmt.Println("INSTANCE RETRIEVAL")
+	
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	//Check Authentication of User
 	tokenString := r.Header.Get("Authorization")
+	fmt.Println("TokenString: ", tokenString)
 	if len(tokenString) == 0 {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Missing Authorization Header"))
+		fmt.Println("Missing Authorization Header")
 		return
 	}
 	tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
@@ -128,33 +176,22 @@ func authMiddleware(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Error verifying JWT token: " + err.Error()))
+		fmt.Println("Error verifying JWT token: " + err.Error())
+		return
+	}	
+
+	netid := claims.(jwt.MapClaims)["netid"].(string)
+	level := checkAuthLevel(netid)
+	if level == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Unauthorized User Header"))
+		fmt.Println("Unauthorized User Header")
 		return
 	}
-	netid := claims.(jwt.MapClaims)["netid"].(string)
 	r.Header.Set("netid", netid)
 
 	//Grab Real Instances Here
-	requests := []Request{
-		Request{Name: "Zachary Newell",
-			NetID:  "newellz2",
-			Email:  "newellz2@nevada.unr.edu",
-			Course: "",
-			Status: "Archived",
-			Date:   "2/20/19"},
-		Request{Name: "Andrew Mcintyre",
-			NetID:  "amcintyre",
-			Email:  "amcintyre@nevada.unr.edu",
-			Course: "CS 202",
-			Status: "Unresolved",
-			Date:   "9/20/20"},
-		Request{Name: "Vincent Pham",
-			NetID:  "vpham",
-			Email:  "vpham@nevada.unr.edu",
-			Course: "CS 202",
-			Status: "Resolved",
-			Date:   "8/15/19"},
-	}
-	w.WriteHeader(http.StatusCreated)
+	requests := getInstances(level, netid)
 	json.NewEncoder(w).Encode(requests)
 }
 
@@ -163,14 +200,14 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Endpoint: LoginHandler")
 	r.ParseForm()
-	fmt.Printf("Test: %s\n", r.FormValue("netid"))
-	fmt.Printf("Test: %s\n", r.FormValue("password"))
+	fmt.Printf("Login: %s\n", r.FormValue("netid"))
+	//TODO: heck user in PAM Stack
+
 	authLevel := checkAuthLevel(r.FormValue("netid"))
 	fmt.Printf("authLevel: %d\n", authLevel)
 
 	w.Header().Set("Content-Type", "application/json")
 	enableCors(&w)
-
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["netid"] = r.FormValue("netid")

@@ -15,6 +15,7 @@ const post = (url: string, data: URLSearchParams) => {
 export const postLogin = async (
   inputs: LoginInput
 ): Promise<errorMessage | void> => {
+  console.log(inputs);
   const data = new URLSearchParams(inputs);
   const res: any = await post("/api/login", data);
   if (res.error) {
