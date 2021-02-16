@@ -2,7 +2,7 @@ import axios, { AxiosRequestConfig } from "axios";
 import { AuthToken } from "./auth_token";
 import Router from "next/router";
 
-const get = (url: string, authString: string) => {
+const getReq = (url: string, authString: string) => {
   const baseConfig: AxiosRequestConfig = {
     headers: {
       Authorization: authString,
@@ -13,8 +13,20 @@ const get = (url: string, authString: string) => {
   return axios.get(url, baseConfig);
 };
 
-const getInstances = async (authString: string) => {
-  let res: any = await get("/api/instances", authString);
+export const getRequests = async (authString: string) => {
+  let res: any = await getReq("/api/requests", authString);
+  if (res.error) {
+    return res.error;
+  }
+  if (res.data == "Unauthorized User Header") {
+    console.log("Unauthorized user");
+    Router.push("/login");
+  }
+  return res.data;
+};
+
+export const getInstances = async (authString: string) => {
+  let res: any = await getReq("/api/instances", authString);
   if (res.error) {
     return res.error;
   }
@@ -24,5 +36,3 @@ const getInstances = async (authString: string) => {
   }
   return res.data;
 };
-
-export default getInstances;

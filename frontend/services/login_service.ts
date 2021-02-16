@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig } from "axios";
-import { LoginInput } from "../pages/login";
+import { LoginInput } from "../pages";
 import { AuthToken } from "./auth_token";
 
 type errorMessage = string;
@@ -26,4 +26,9 @@ export const postLogin = async (
     return;
   }
   return "Something unexected happened";
+};
+
+export const Logout = () => {
+  AuthToken.logout();
+  return;
 };

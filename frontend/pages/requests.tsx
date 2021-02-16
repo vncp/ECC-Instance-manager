@@ -5,7 +5,7 @@ import { getRequests, getInstances } from "../services/instances_service";
 import Head from "next/head";
 import styles from "../styles/Dashboard.module.css";
 import Container from "react-bootstrap/Container";
-import Link from "next/link";
+import RequestTable from "../components/RequestTable";
 import ManagementTable from "../components/ManagementTable";
 import Spinner from "react-bootstrap/Spinner";
 
@@ -13,9 +13,9 @@ type Props = AuthProps;
 
 const ACTION_URL = "http://localhost:3001/api/action";
 
-const Dashboard = ({ auth }: Props) => {
+const Requests = ({ auth }: Props) => {
   const [error, setError] = useState(null);
-  const [instances, setInstances] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [requestState, setRequestState] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -36,19 +36,16 @@ const Dashboard = ({ auth }: Props) => {
     setRequestState("Waiting on response from server..");
     const response = await fetch(ACTION_URL, params);
     if (response.ok) {
-      const json = await response.json();
-      setRequestState(json.status);
       return response;
     } else {
       setError(true);
-      setRequestState("Request failed..");
     }
   };
 
   useEffect(() => {
-    getInstances(auth.authorizationString)
+    getRequests(auth.authorizationString)
       .then((instances) => {
-        setInstances(instances);
+        setRequests(instances);
         setIsLoaded(true);
       })
       .catch((error) => {
@@ -83,21 +80,20 @@ const Dashboard = ({ auth }: Props) => {
     return (
       <div className={styles.container}>
         <Head>
-          <title>Management Dashboard - {auth.decodedToken.netid}</title>
+          <title>Request Dashboard - {auth.decodedToken.netid}</title>
           <link rel="icon" href="/favicon.ico" />
         </Head>
         <MainNavbar loggedIn staff={auth.decodedToken.level > 2} />
         <div className={styles.status}>{requestState}</div>
         <Container fluid>
-          <ManagementTable
-            instances={instances}
+          <RequestTable
+            requests={requests}
             clickHandler={actionHandler}
-            staff={auth.decodedToken.level > 1}
-          />
+          ></RequestTable>
         </Container>
       </div>
     );
   }
 };
 
-export default privateRoute(Dashboard);
+export default privateRoute(Requests);

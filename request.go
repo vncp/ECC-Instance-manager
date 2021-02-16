@@ -2,20 +2,16 @@ package main
 
 import (
 	"encoding/json"
-	"encoding/gob"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
-	"html/template"
 	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
-	"github.com/gorilla/securecookie"
 	"github.com/dgrijalva/jwt-go"
 )
-
 
 //Session Initialization//
 //UserSession tracks user sessions and permissions
@@ -23,38 +19,25 @@ type UserSession struct {
 	Username		string
 	Authenticated	bool
 }
-//Stores Cookie Data
-var store *sessions.CookieStore
-//Holds parsed templates
-var tpl *template.Template
-func init() {
-	authKeyOne := securecookie.GenerateRandomKey(64)
-	encryptionKeyOne := securecookie.GenerateRandomKey(32)
 
-	store = sessions.NewCookieStore(
-		authKeyOne,
-		encryptionKeyOne,
-	)
-
-	store.Options = &sessions.Options{
-		Path:     "/",
-		MaxAge:   60 * 15,
-		HttpOnly: true,
-	}
-
-	gob.Register(UserSession{})
-
-	tpl = template.Must(template.ParseGlob("templates/*.gohtml"))
-}
-//Request Struct
+//Request Struct - For each request filled by form
+//TODO: Implement State Pattern Status
 type Request struct {
 	Name   string `json:"name"`
 	NetID  string `json:"netid"`
 	Email  string `json:"email"`
 	Course string `json:"course"`
-	Status string `json:"status"`
+	Status string `json:"status"` // Unresolved | Accepted | Rejected | Archived
 	Date   string `json:"date"`
 }
+
+//Instance Struct - For each existing Linux Instance
+type Instance struct {
+	Name	string	`json:"name"`
+	NetID  string `json:"netid"`
+	Status string `json:"status"` // Online | Offline | Error
+}
+
 //Task struct for task requests sent by the frontend
 type Task struct {
 	NetID string `json:"netid"`
@@ -83,18 +66,8 @@ func getUser(s *sessions.Session) UserSession {
 	return user
 }
 
-//Index Handler
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	session, err := store.Get(r, "cookie-name")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	user := getUser(session)
-	tpl.ExecuteTemplate(w, "index.gohtml", user)
-}
-
 func checkAuthLevel(netid string) int{
+	//TODO: Server PAM Stack Authentication
 	if netid == "vpham" || netid == "newellz2" {
 		return 3;
 	} else if netid == "sskidmore" {
@@ -107,6 +80,7 @@ func checkAuthLevel(netid string) int{
 }
 
 func verifyToken(tokenString string) (jwt.Claims, error) {
+	//TODO: Change Signing Key - source from .env
 	signingKey := []byte("ecc-secret")
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error){
 		return signingKey, nil
@@ -117,7 +91,8 @@ func verifyToken(tokenString string) (jwt.Claims, error) {
 	return token.Claims, err
 }
 
-func getInstances(authLevel int, requestor string) []Request {		
+func getRequests(authLevel int, requestor string) []Request {		
+	//TODO: Database Retrieval
 	if authLevel > 1 {
 		requests := []Request{
 			Request{Name: "Zachary Newell",
@@ -143,6 +118,7 @@ func getInstances(authLevel int, requestor string) []Request {
 	} else {
 		requests := []Request{
 			Request{Name: requestor,
+			NetID: requestor,
 			Email: "variable@email.com",
 			Course: "TEST 101",
 			Status: "Resolved",
@@ -153,20 +129,13 @@ func getInstances(authLevel int, requestor string) []Request {
 	}
 }
 
-func authMiddleware(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("INSTANCE RETRIEVAL")
-	
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
-	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
-	w.Header().Set("Content-Type", "application/json")
+func authMiddlewareRequests(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
 	w.WriteHeader(http.StatusOK)
-
 	//Check Authentication of User
 	tokenString := r.Header.Get("Authorization")
 	fmt.Println("TokenString: ", tokenString)
 	if len(tokenString) == 0 {
-		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Missing Authorization Header"))
 		fmt.Println("Missing Authorization Header")
 		return
@@ -174,22 +143,77 @@ func authMiddleware(w http.ResponseWriter, r *http.Request) {
 	tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
 	claims, err := verifyToken(tokenString)
 	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Error verifying JWT token: " + err.Error()))
 		fmt.Println("Error verifying JWT token: " + err.Error())
 		return
 	}	
-
 	netid := claims.(jwt.MapClaims)["netid"].(string)
 	level := checkAuthLevel(netid)
 	if level == 0 {
-		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte("Unauthorized User Header"))
 		fmt.Println("Unauthorized User Header")
 		return
 	}
+	fmt.Printf("Instance Retrieval for %s : Level %d\n", netid, level)
 	r.Header.Set("netid", netid)
+	//Grab Real Instances Here
+	requests := getRequests(level, netid)
+	json.NewEncoder(w).Encode(requests)
+}
 
+func getInstances(authLevel int, requestor string) []Instance {		
+	//TODO: Database Retrieval
+	if authLevel > 1 {
+		instances := []Instance{
+			Instance{Name: "Zachary Newell",
+				NetID:  "newellz2",
+				Status: "Online",},
+			Instance{Name: "Andrew Mcintyre",
+				NetID:  "amcintyre",
+				Status: "Offline",},
+			Instance{Name: "Vincent Pham",
+				NetID:  "vpham",
+				Status: "Error",},
+		}
+		return instances
+	} else {
+		instances := []Instance{
+			Instance{Name: requestor,
+			NetID: requestor,
+			Status: "Resolved",
+			},
+		}
+		return instances
+	}
+}
+
+func authMiddlewareInstances(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	w.WriteHeader(http.StatusOK)
+	//Check Authentication of User
+	tokenString := r.Header.Get("Authorization")
+	fmt.Println("TokenString: ", tokenString)
+	if len(tokenString) == 0 {
+		w.Write([]byte("Missing Authorization Header"))
+		fmt.Println("Missing Authorization Header")
+		return
+	}
+	tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
+	claims, err := verifyToken(tokenString)
+	if err != nil {
+		w.Write([]byte("Error verifying JWT token: " + err.Error()))
+		fmt.Println("Error verifying JWT token: " + err.Error())
+		return
+	}	
+	netid := claims.(jwt.MapClaims)["netid"].(string)
+	level := checkAuthLevel(netid)
+	if level == 0 {
+		w.Write([]byte("Unauthorized User Header"))
+		fmt.Println("Unauthorized User Header")
+		return
+	}
+	fmt.Printf("Instance Retrieval for %s : Level %d", netid, level)
+	r.Header.Set("netid", netid)
 	//Grab Real Instances Here
 	requests := getInstances(level, netid)
 	json.NewEncoder(w).Encode(requests)
@@ -197,7 +221,6 @@ func authMiddleware(w http.ResponseWriter, r *http.Request) {
 
 //Login Handler
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-
 	fmt.Println("Endpoint: LoginHandler")
 	r.ParseForm()
 	fmt.Printf("Login: %s\n", r.FormValue("netid"))
@@ -220,77 +243,33 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(tObj)
 }
 
-func apiMain(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Remote Linux Request API")
-	fmt.Println("Endpoint: API Home Page")
-}
-
 func actionHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint: action Handler")
-	//body, err := ioutil.ReadAll(r.Body)
-	//defer r.Body.Close()
-	//if err != nil {
-	//log.Printf("Error reading body: %v", err)
-	//http.Error(w, "Cannot read POST body", http.StatusBadRequest)
-	//}
+	enableCors(&w)
+	fmt.Println("Endpoint: actionHandler")
 	var instanceData Task
 	decoder := json.NewDecoder(r.Body)
 	decoder.Decode(&instanceData)
 	netid := instanceData.NetID
 	task := instanceData.Task
+	//TODO: Server Side Tasks
 	fmt.Println("POST NETID: " + netid)
 	fmt.Println("POST TASK: " + task)
-	enableCors(&w)
-}
-
-func testResponse(w http.ResponseWriter, r *http.Request) {
-	requests := []Request{
-		Request{Name: "Zachary Newell",
-			NetID:  "newellz2",
-			Email:  "newellz2@nevada.unr.edu",
-			Course: "",
-			Status: "Archived",
-			Date:   "2/20/19"},
-		Request{Name: "Andrew Mcintyre",
-			NetID:  "amcintyre",
-			Email:  "amcintyre@nevada.unr.edu",
-			Course: "CS 202",
-			Status: "Unresolved",
-			Date:   "9/20/20"},
-		Request{Name: "Vincent Pham",
-			NetID:  "vpham",
-			Email:  "vpham@nevada.unr.edu",
-			Course: "CS 202",
-			Status: "Resolved",
-			Date:   "8/15/19"},
+	type Response struct {
+		Status	string  `json:"status"`
 	}
-	enableCors(&w)
-	json.NewEncoder(w).Encode(requests)
-	fmt.Println("Endpoint: testResponse")
+	time.Sleep(2 * time.Second);
+	json.NewEncoder(w).Encode(Response{Status: task+" finished!"})
 }
 
 func main() {
 	router := mux.NewRouter()
 
-	//Authentication Paths
-	//router.HandleFunc("/", indexHandler)
-	//router.HandleFunc("/login", loginHandler)
-	//router.HandleFunc("/logout", logoutHandler)
-	//router.HandleFunc("/forbidden", loginHandler)
-	//router.HandleFunc("/admin", loginHandler)
-
 	//Backend Paths
 	api := router.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/", apiMain)
 	api.HandleFunc("/login", loginHandler)
-	api.HandleFunc("/instances", authMiddleware)
+	api.HandleFunc("/instances", authMiddlewareInstances)
+	api.HandleFunc("/requests", authMiddlewareRequests)
 	api.HandleFunc("/action", actionHandler)
-
-	//Frontend Paths
-	//buildHandler := http.FileServer(http.Dir("frontend/out"))
-	//router.PathPrefix("/").Handler(buildHandler)
-	//staticHandler := http.StripPrefix("/static/", http.FileServer(http.Dir("frontend/out/_next/static")))
-	//router.PathPrefix("/static/").Handler(staticHandler)
 
 	//Server Parameters
 	srv := &http.Server{

@@ -1,3 +1,4 @@
+import Head from "next/head";
 import Form from "react-bootstrap/Form";
 import MainNavbar from "../components/MainNavbar";
 import styles from "../styles/RequestForm.module.css";
@@ -5,6 +6,10 @@ import styles from "../styles/RequestForm.module.css";
 const RequestForm = () => {
   return (
     <>
+      <Head>
+        <title>Request Linux Instance Form</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
       <MainNavbar />
       <div className={styles.container}>
         <h1>Remote Linux Instance Request Form</h1>
