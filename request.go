@@ -7,7 +7,11 @@ import (
 	"net/http"
 	"time"
 	"strings"
+  "bufio"
+  "errors"
+  "os"
 
+  "github.com/msteinert/pam"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/dgrijalva/jwt-go"
@@ -262,6 +266,39 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	time.Sleep(2 * time.Second);
 	json.NewEncoder(w).Encode(Response{Status: task+" finished!"})
+}
+
+// Returns false if the credentials were not found in the PAM stack
+// Returns true otherwise
+func authenticate(user string, password string){
+  t, err := pam.StartFunc("", user, func(s pam.Style, msg string) (string,error) {
+  switch s {
+      case pam.PromptEchoOff:
+        return password, nil
+      case pam.PromptEchoOn:
+        fmt.Print(msg + " ")
+        input, err := bufio.NewReader(os.Stdin).ReadString('\n')
+        if err != nil {
+          return "", err
+        }
+        return input[:len(input)-1], nil
+      case pam.ErrorMsg:
+        log.Print(msg)
+        return "", nil
+      case pam.TextInfo:
+        fmt.Println(msg)
+        return "", nil
+    }
+    return "", errors.New("Unrecognized message style")
+  })
+  if err != nil {
+    log.Fatalf("Start: %s", err.Error())
+  }
+  err = t.Authenticate(0)
+  if err != nil {
+    return false
+  }
+  return true
 }
 
 func main() {
