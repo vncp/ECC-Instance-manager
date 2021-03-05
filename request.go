@@ -1,6 +1,7 @@
 package main
 
 import (
+  "context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -11,11 +12,17 @@ import (
   "errors"
   "os"
 
+  "github.com/jackc/pgx"
   "github.com/msteinert/pam"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"github.com/dgrijalva/jwt-go"
 )
+
+var DATABASE_URL = "postgresql://root:password@localhost/postgres"
+
+//Global Database Connection
+var databaseConnection *pgx.Conn
 
 //Session Initialization//
 //UserSession tracks user sessions and permissions
@@ -61,6 +68,7 @@ func enableCors(w *http.ResponseWriter) {
 
 // getUser returns a user from session s
 // on error returns an empty user
+// TODO: Session Management
 func getUser(s *sessions.Session) UserSession {
 	val := s.Values["user"]
 	var user = UserSession{}
@@ -71,17 +79,48 @@ func getUser(s *sessions.Session) UserSession {
 	return user
 }
 
-func checkAuthLevel(netid string) int{
-	//TODO: Server PAM Stack Authentication
-	if netid == "vpham" || netid == "newellz2" {
-		return 3;
-	} else if netid == "sskidmore" {
-		return 2;
-	} else if netid == "jakobdellosantos" || netid == "prim" {
-		return 1;
-	} else {
-		return 0;
-	}
+// Returns false if the credentials were not found in the PAM stack
+// Returns true otherwise
+func authenticate(user string, password string) bool {
+  t, err := pam.StartFunc("", user, func(s pam.Style, msg string) (string,error) {
+  switch s {
+      case pam.PromptEchoOff:
+        return password, nil
+      case pam.PromptEchoOn:
+        fmt.Print(msg + " ")
+        input, err := bufio.NewReader(os.Stdin).ReadString('\n')
+        if err != nil {
+          return "", err
+        }
+        return input[:len(input)-1], nil
+      case pam.ErrorMsg:
+        log.Print(msg)
+        return "", nil
+      case pam.TextInfo:
+        fmt.Println(msg)
+        return "", nil
+    }
+    return "", errors.New("Unrecognized message style")
+  })
+  if err != nil {
+    log.Fatalf("Start: %s", err.Error())
+  }
+  err = t.Authenticate(0)
+  if err != nil {
+    return false
+  }
+  return true
+}
+
+func checkAuthLevel(netid string, password string) int{
+  authenticated := authenticate(netid, password)
+  if !authenticated {
+    return 0
+  }
+  if netid == "vpham" || netid == "newellz2" {
+    return 3
+  }
+  return 1
 }
 
 func verifyToken(tokenString string) (jwt.Claims, error) {
@@ -96,42 +135,42 @@ func verifyToken(tokenString string) (jwt.Claims, error) {
 	return token.Claims, err
 }
 
-func getRequests(authLevel int, requestor string) []Request {		
-	//TODO: Database Retrieval
-	if authLevel > 1 {
-		requests := []Request{
-			Request{Name: "Zachary Newell",
-				NetID:  "newellz2",
-				Email:  "newellz2@nevada.unr.edu",
-				Course: "",
-				Status: "Archived",
-				Date:   "2/20/19"},
-			Request{Name: "Andrew Mcintyre",
-				NetID:  "amcintyre",
-				Email:  "amcintyre@nevada.unr.edu",
-				Course: "CS 202",
-				Status: "Unresolved",
-				Date:   "9/20/20"},
-			Request{Name: "Vincent Pham",
-				NetID:  "vpham",
-				Email:  "vpham@nevada.unr.edu",
-				Course: "CS 202",
-				Status: "Resolved",
-				Date:   "8/15/19"},
-		}
-		return requests
-	} else {
-		requests := []Request{
-			Request{Name: requestor,
-			NetID: requestor,
-			Email: "variable@email.com",
-			Course: "TEST 101",
-			Status: "Resolved",
-			Date: "Apple",
-			},
-		}
-		return requests
-	}
+func getRequests(authLevel int, requestor string) []Request {
+  var requests = []Request{}
+  if authLevel < 1 {
+    return requests
+  } else if authLevel == 1 {
+    rows, err := databaseConnection.Query(context.Background(), "select * from request where NETID=$1", requestor)
+    if err != nil {
+      log.Fatal(err)
+    }
+    for rows.Next() {
+      var date time.Time
+      var request Request
+      err := rows.Scan(&request.Name, &request.NetID, &request.Email, &request.Course, &request.Status, &date)
+      if err != nil {
+        log.Fatal(err)
+      }
+      request.Date = date.Format("2006/02/03")
+      requests = append(requests, request)
+    }
+  } else {
+    rows, err := databaseConnection.Query(context.Background(), "select * from request")
+    if err != nil {
+      log.Fatal(err)
+    }
+    for rows.Next() {
+      var date time.Time
+      var request Request
+      err := rows.Scan(&request.Name, &request.NetID, &request.Email, &request.Course, &request.Status, &date)
+      if err != nil {
+        log.Fatal(err)
+      }
+      request.Date = date.Format("2006/02/03")
+      requests = append(requests, request)
+    }
+  }
+  return requests
 }
 
 func authMiddlewareRequests(w http.ResponseWriter, r *http.Request) {
@@ -151,7 +190,8 @@ func authMiddlewareRequests(w http.ResponseWriter, r *http.Request) {
 		return
 	}	
 	netid := claims.(jwt.MapClaims)["netid"].(string)
-	level := checkAuthLevel(netid)
+  pass := claims.(jwt.MapClaims)["password"].(string)
+	level := checkAuthLevel(netid, pass)
 	if level == 0 {
 		w.Write([]byte("Unauthorized User Header"))
 		fmt.Println("Unauthorized User Header")
@@ -208,7 +248,8 @@ func authMiddlewareInstances(w http.ResponseWriter, r *http.Request) {
 		return
 	}	
 	netid := claims.(jwt.MapClaims)["netid"].(string)
-	level := checkAuthLevel(netid)
+  pass := claims.(jwt.MapClaims)["password"].(string)
+	level := checkAuthLevel(netid, pass)
 	if level == 0 {
 		w.Write([]byte("Unauthorized User Header"))
 		fmt.Println("Unauthorized User Header")
@@ -228,7 +269,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Login: %s\n", r.FormValue("netid"))
 	//TODO: heck user in PAM Stack
 
-	authLevel := checkAuthLevel(r.FormValue("netid"))
+	authLevel := checkAuthLevel(r.FormValue("netid"), r.FormValue("password"))
 	fmt.Printf("authLevel: %d\n", authLevel)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -268,40 +309,12 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(Response{Status: task+" finished!"})
 }
 
-// Returns false if the credentials were not found in the PAM stack
-// Returns true otherwise
-func authenticate(user string, password string){
-  t, err := pam.StartFunc("", user, func(s pam.Style, msg string) (string,error) {
-  switch s {
-      case pam.PromptEchoOff:
-        return password, nil
-      case pam.PromptEchoOn:
-        fmt.Print(msg + " ")
-        input, err := bufio.NewReader(os.Stdin).ReadString('\n')
-        if err != nil {
-          return "", err
-        }
-        return input[:len(input)-1], nil
-      case pam.ErrorMsg:
-        log.Print(msg)
-        return "", nil
-      case pam.TextInfo:
-        fmt.Println(msg)
-        return "", nil
-    }
-    return "", errors.New("Unrecognized message style")
-  })
-  if err != nil {
-    log.Fatalf("Start: %s", err.Error())
-  }
-  err = t.Authenticate(0)
-  if err != nil {
-    return false
-  }
-  return true
-}
 
 func main() {
+  //Database Driver Setup
+  databaseConnection, _ = pgx.Connect(context.Background(), DATABASE_URL)
+
+
 	router := mux.NewRouter()
 
 	//Backend Paths
