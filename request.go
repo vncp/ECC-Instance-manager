@@ -32,7 +32,6 @@ type UserSession struct {
 }
 
 //Request Struct - For each request filled by form
-//TODO: Implement State Pattern Status
 type Request struct {
 	Name   string `json:"name"`
 	NetID  string `json:"netid"`
@@ -47,6 +46,7 @@ type Instance struct {
 	Name	string	`json:"name"`
 	NetID  string `json:"netid"`
 	Status string `json:"status"` // Online | Offline | Error
+	Date   string `json:"date"`
 }
 
 //Task struct for task requests sent by the frontend
@@ -135,6 +135,38 @@ func verifyToken(tokenString string) (jwt.Claims, error) {
 	return token.Claims, err
 }
 
+
+func authMiddlewareRequests(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	w.WriteHeader(http.StatusOK)
+	//Check Authentication of User
+	tokenString := r.Header.Get("Authorization")
+	if len(tokenString) == 0 {
+		w.Write([]byte("Missing Authorization Header"))
+		return
+	}
+	tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
+	claims, err := verifyToken(tokenString)
+	if err != nil {
+		w.Write([]byte("Error verifying JWT token: " + err.Error()))
+		fmt.Println("Error verifying JWT token: " + err.Error())
+		return
+	}	
+	netid := claims.(jwt.MapClaims)["netid"].(string)
+  pass := claims.(jwt.MapClaims)["password"].(string)
+	level := checkAuthLevel(netid, pass)
+	if level == 0 {
+		w.Write([]byte("Unauthorized User Header"))
+		fmt.Println("Unauthorized User Header")
+		return
+	}
+	fmt.Printf("Instance Retrieval for %s : Level %d\n", netid, level)
+	r.Header.Set("netid", netid)
+	//Grab Real Instances Here
+	requests := getRequests(level, netid)
+	json.NewEncoder(w).Encode(requests)
+}
+
 func getRequests(authLevel int, requestor string) []Request {
   var requests = []Request{}
   if authLevel < 1 {
@@ -173,61 +205,42 @@ func getRequests(authLevel int, requestor string) []Request {
   return requests
 }
 
-func authMiddlewareRequests(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
-	w.WriteHeader(http.StatusOK)
-	//Check Authentication of User
-	tokenString := r.Header.Get("Authorization")
-	if len(tokenString) == 0 {
-		w.Write([]byte("Missing Authorization Header"))
-		return
-	}
-	tokenString = strings.Replace(tokenString, "Bearer ", "", 1)
-	claims, err := verifyToken(tokenString)
-	if err != nil {
-		w.Write([]byte("Error verifying JWT token: " + err.Error()))
-		fmt.Println("Error verifying JWT token: " + err.Error())
-		return
-	}	
-	netid := claims.(jwt.MapClaims)["netid"].(string)
-  pass := claims.(jwt.MapClaims)["password"].(string)
-	level := checkAuthLevel(netid, pass)
-	if level == 0 {
-		w.Write([]byte("Unauthorized User Header"))
-		fmt.Println("Unauthorized User Header")
-		return
-	}
-	fmt.Printf("Instance Retrieval for %s : Level %d\n", netid, level)
-	r.Header.Set("netid", netid)
-	//Grab Real Instances Here
-	requests := getRequests(level, netid)
-	json.NewEncoder(w).Encode(requests)
-}
-
 func getInstances(authLevel int, requestor string) []Instance {		
-	//TODO: Database Retrieval
-	if authLevel > 1 {
-		instances := []Instance{
-			Instance{Name: "Zachary Newell",
-				NetID:  "newellz2",
-				Status: "Online",},
-			Instance{Name: "Andrew Mcintyre",
-				NetID:  "amcintyre",
-				Status: "Offline",},
-			Instance{Name: "Vincent Pham",
-				NetID:  "vpham",
-				Status: "Error",},
-		}
-		return instances
-	} else {
-		instances := []Instance{
-			Instance{Name: requestor,
-			NetID: requestor,
-			Status: "Online",
-			},
-		}
-		return instances
-	}
+  var instances = []Instance{}
+  if authLevel < 1{
+    return instances
+  } else if authLevel == 1{
+    rows, err := databaseConnection.Query(context.Background(), "select * from instance where NETID=$1", requestor)
+    if err != nil {
+      log.Fatal(err)
+    }
+    for rows.Next() {
+      var date time.Time
+      var instance Instance
+      err := rows.Scan(&instance.Name, &instance.NetID, &instance.Status, &date)
+      if err != nil {
+        log.Fatal(err)
+      }
+      instance.Date = date.Format("2006/02/03")
+      instances = append(instances, instance)
+    }
+  } else {
+    rows, err := databaseConnection.Query(context.Background(), "select * from instance")
+    if err != nil {
+      log.Fatal(err)
+    }
+    for rows.Next() {
+      var date time.Time
+      var instance Instance
+      err := rows.Scan(&instance.Name, &instance.NetID, &instance.Status, &date)
+      if err != nil {
+        log.Fatal(err)
+      }
+      instance.Date = date.Format("2006/02/03")
+      instances = append(instances, instance)
+    }
+  }
+  return instances
 }
 
 func authMiddlewareInstances(w http.ResponseWriter, r *http.Request) {
@@ -246,7 +259,7 @@ func authMiddlewareInstances(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Error verifying JWT token: " + err.Error()))
 		fmt.Println("Error verifying JWT token: " + err.Error())
 		return
-	}	
+	}
 	netid := claims.(jwt.MapClaims)["netid"].(string)
   pass := claims.(jwt.MapClaims)["password"].(string)
 	level := checkAuthLevel(netid, pass)
@@ -298,7 +311,6 @@ func actionHandler(w http.ResponseWriter, r *http.Request) {
 	if requestor=="" || netid=="" || task=="" {
 		return
 	}
-	//TODO: Server Side Tasks
 	fmt.Println("POST REQUESTOR: " + requestor)
 	fmt.Println("POST NETID: " + netid)
 	fmt.Println("POST TASK: " + task)
